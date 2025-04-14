@@ -1,0 +1,37 @@
+# Node.js bağımlılıkları
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Ortam değişkenleri
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Log dosyaları
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Çıktı dosyaları
+dist/
+build/
+coverage/
+
+# Veritabanı dosyaları
+*.sqlite
+*.sqlite3
+dump.rdb
+*.pid
+
+# IDE ve OS dosyaları
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
