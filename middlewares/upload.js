@@ -1,5 +1,7 @@
 const multer = require("multer");
-const storage = multer.memoryStorage(); // dosyayı hafızada tutar
+
+// Multer'ı sadece belleğe kaydedecek şekilde ayarla
+const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 module.exports = upload;

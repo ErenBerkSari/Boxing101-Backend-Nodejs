@@ -14,10 +14,10 @@ router.get("/", getAllMovements);
 
 router.get("/:id", getMovementById);
 
-router.post("/", authMiddleware, upload.single("file"), createMovement);
+router.post("/", upload.any(), createMovement);
 
-router.put("/:id", authMiddleware, upload.single("file"), updateMovement);
+router.patch("/:id", upload.any(), updateMovement);
 
-router.delete("/:id", authMiddleware, deleteMovement);
+router.delete("/:id", deleteMovement);
 
 module.exports = router;
