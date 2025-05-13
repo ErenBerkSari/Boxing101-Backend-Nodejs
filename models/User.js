@@ -20,5 +20,37 @@ const UserSchema = new mongoose.Schema({
     enum: ["user", "admin"],
     default: "user",
   },
+  programs: [
+    {
+      programId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "BoxingProgram",
+      },
+      isCompleted: {
+        type: Boolean,
+        default: false,
+      },
+      isRegistered: {
+        type: Boolean,
+        default: false,
+      },
+      days: [
+        {
+          dayId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "ProgramDay",
+          },
+          isCompleted: {
+            type: Boolean,
+            default: false,
+          },
+          lastCompletedStep: {
+            type: Number, // örn: step sırası
+            default: 0,
+          },
+        },
+      ],
+    },
+  ],
 });
 module.exports = mongoose.model("User", UserSchema);

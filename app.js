@@ -6,6 +6,7 @@ const cookieParser = require("cookie-parser");
 const authRoute = require("./routes/authRoute");
 const movementRoute = require("./routes/movementRoute");
 const programRoute = require("./routes/programRoute");
+const userRoute = require("./routes/userRoute");
 
 dotenv.config();
 
@@ -32,6 +33,7 @@ mongoose
 app.use("/auth", authRoute);
 app.use("/movement", movementRoute);
 app.use("/program", programRoute);
+app.use("/user", userRoute);
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
