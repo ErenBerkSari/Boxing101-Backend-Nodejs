@@ -71,7 +71,86 @@ const programIsRegistered = async (req, res) => {
     });
   }
 };
+
+const completeProgramDay = async (req, res) => {
+  const userId = req.user.userId;
+  const { programId, dayId, lastCompletedStep = 0 } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+
+    const program = user.programs.find(
+      (p) => p.programId.toString() === programId
+    );
+    if (!program)
+      return res.status(404).json({ message: "Program bulunamadı" });
+
+    const day = program.days.find((d) => d.dayId.toString() === dayId);
+    if (!day) return res.status(404).json({ message: "Gün bulunamadı" });
+
+    // Gün bilgilerini güncelle
+    day.isCompleted = true;
+    day.lastCompletedStep = lastCompletedStep;
+    day.completedAt = new Date(); // tamamlandığı zaman
+
+    // Tüm günler tamamlandıysa programı da tamamlandı olarak işaretle
+    const allDaysCompleted = program.days.every((d) => d.isCompleted);
+    if (allDaysCompleted) {
+      program.isCompleted = true;
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      message: "Gün tamamlandı olarak işaretlendi",
+      isProgramCompleted: program.isCompleted,
+    });
+  } catch (err) {
+    console.error("Hata:", err);
+    res.status(500).json({ message: "Sunucu hatası" });
+  }
+};
+
+const getProgramProgress = async (req, res) => {
+  const userId = req.user.userId; // JWT'den alınan kullanıcı ID'si
+  const { programId } = req.params;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user)
+      return res.status(404).json({ message: "Kullanıcı bulunamadı." });
+
+    const program = user.programs.find(
+      (p) => p.programId.toString() === programId
+    );
+
+    if (!program) {
+      return res
+        .status(404)
+        .json({ message: "Kullanıcı bu programa kayıtlı değil." });
+    }
+
+    const progressByDays = program.days.map((day) => ({
+      dayId: day.dayId,
+      isCompleted: day.isCompleted,
+      lastCompletedStep: day.lastCompletedStep,
+      completedAt: day.completedAt,
+    }));
+
+    res.status(200).json({ programId, progress: progressByDays });
+  } catch (error) {
+    console.error("İlerleme verisi alınamadı:", error);
+    res.status(500).json({
+      message: "Program ilerlemesi alınırken bir hata oluştu.",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   programIsRegistered,
   registerBoxingProgram,
+  completeProgramDay,
+  getProgramProgress,
 };

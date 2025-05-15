@@ -5,6 +5,8 @@ const authMiddleware = require("../middlewares/authMiddleware");
 const {
   registerBoxingProgram,
   programIsRegistered,
+  completeProgramDay,
+  getProgramProgress,
 } = require("../controllers/UserController");
 
 router.post(
@@ -13,5 +15,9 @@ router.post(
   registerBoxingProgram
 );
 router.get("/:programId/isRegistered", authMiddleware, programIsRegistered);
+
+router.patch("/complete-day", authMiddleware, completeProgramDay);
+
+router.get("/:programId/progress", authMiddleware, getProgramProgress);
 
 module.exports = router;

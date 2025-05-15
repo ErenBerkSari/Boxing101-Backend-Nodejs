@@ -48,6 +48,10 @@ const UserSchema = new mongoose.Schema({
             type: Number, // örn: step sırası
             default: 0,
           },
+          completedAt: {
+            type: Date,
+            default: null,
+          },
         },
       ],
     },
