@@ -34,12 +34,29 @@ const UserSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
       },
+      completedDays: [
+        {
+          dayId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "ProgramDay",
+          },
+          dayNumber: {
+            type: Number,
+            default: 0,
+          },
+          completedAt: {
+            type: Date,
+            default: null,
+          },
+        },
+      ],
       days: [
         {
           dayId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "ProgramDay",
           },
+
           isCompleted: {
             type: Boolean,
             default: false,
@@ -49,6 +66,10 @@ const UserSchema = new mongoose.Schema({
             default: 0,
           },
           completedAt: {
+            type: Date,
+            default: null,
+          },
+          newDayLockedToDate: {
             type: Date,
             default: null,
           },
