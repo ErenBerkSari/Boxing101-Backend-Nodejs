@@ -5,6 +5,7 @@ const {
   logout,
   refresh,
   getAuthUser,
+  getServerDate,
 } = require("../controllers/AuthController");
 const authMiddleware = require("../middlewares/authMiddleware");
 
@@ -15,5 +16,6 @@ router.post("/register", register);
 router.post("/logout", logout);
 router.post("/refresh", refresh);
 router.get("/getAuthUser", authMiddleware, getAuthUser);
+router.get("/getServerDate", authMiddleware, getServerDate);
 
 module.exports = router;

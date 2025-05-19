@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const User = require("../models/User");
 const Token = require("../models/Token");
+const dayjs = require("dayjs");
 
 const ACCESS_TOKEN_EXPIRY = "20m";
 const REFRESH_TOKEN_EXPIRY = "7d";
@@ -225,6 +226,9 @@ const getAuthUser = async (req, res) => {
     res.status(500).json({ message: "Sunucu hatası" });
   }
 };
+const getServerDate = async (req, res) => {
+  res.json({ today: dayjs().startOf("day").toISOString() });
+};
 module.exports = {
   login,
   register,
@@ -232,4 +236,5 @@ module.exports = {
   logout,
   extractTokenInfo,
   getAuthUser,
+  getServerDate,
 };
