@@ -8,7 +8,7 @@ const authMiddleware = async (req, res, next) => {
       req.cookies.accessToken || req.headers.authorization?.split(" ")[1];
 
     if (!token) {
-      return res.status(401).json({ message: "Unauthorized, token missing" });
+      return res.status(401).json({ message: "Yetkilendirme gerekli: Token eksik" });
     }
 
     try {
@@ -31,7 +31,23 @@ const authMiddleware = async (req, res, next) => {
         const refreshToken = req.cookies.refreshToken;
 
         if (!refreshToken) {
-          return res.status(401).json({ message: "Authentication required" });
+          return res.status(401).json({ message: "Yetkilendirme gerekli" });
+        }
+
+        // Refresh token'ın son yenileme zamanını kontrol et
+        const tokenRecord = await Token.findOne({
+          refreshToken,
+        });
+
+        if (!tokenRecord) {
+          return res.status(401).json({ message: "Geçersiz yenileme tokeni" });
+        }
+
+        // Son 1 dakika içinde yenileme yapılmışsa, döngüye girmemek için hata döndür
+        const lastRefreshTime = new Date(tokenRecord.createdAt).getTime();
+        const now = Date.now();
+        if (now - lastRefreshTime < 60000) { // 1 dakika
+          return res.status(401).json({ message: "Çok sık token yenileme isteği" });
         }
 
         try {
@@ -41,21 +57,11 @@ const authMiddleware = async (req, res, next) => {
             process.env.REFRESH_TOKEN_SECRET
           );
 
-          // Token kayıtlarını kontrol et
-          const tokenRecord = await Token.findOne({
-            userId: refreshDecoded.userId,
-            refreshToken,
-          });
-
-          if (!tokenRecord) {
-            return res.status(401).json({ message: "Invalid refresh token" });
-          }
-
           // Kullanıcıyı bul
           const user = await User.findById(refreshDecoded.userId);
 
           if (!user) {
-            return res.status(401).json({ message: "User not found" });
+            return res.status(401).json({ message: "Kullanıcı bulunamadı" });
           }
 
           // Yeni access token oluştur
@@ -73,6 +79,12 @@ const authMiddleware = async (req, res, next) => {
             maxAge: 20 * 60 * 1000,
           });
 
+          // Token kaydını güncelle
+          await Token.findOneAndUpdate(
+            { refreshToken },
+            { createdAt: now }
+          );
+
           // Güncellenmiş kullanıcı bilgilerini ata
           req.user = {
             userId: user._id,
@@ -81,14 +93,14 @@ const authMiddleware = async (req, res, next) => {
 
           next();
         } catch (refreshError) {
-          return res.status(401).json({ message: "Authentication failed" });
+          return res.status(401).json({ message: "Yetkilendirme başarısız" });
         }
       } else {
-        return res.status(401).json({ message: "Invalid token" });
+        return res.status(401).json({ message: "Geçersiz token" });
       }
     }
   } catch (error) {
-    return res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Bir hata oluştu. Lütfen daha sonra tekrar deneyiniz." });
   }
 };
 
