@@ -6,6 +6,10 @@ const StepSchema = new mongoose.Schema({
   title: String, // örn: "Isınma", "Jab-Cross"
   duration: Number, // saniye cinsinden: 30, 60, 90...
   videoUrl: String,
+  selectedMovements: {
+    type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Movement" }],
+    default: [],
+  },
 });
 
 module.exports = mongoose.model("Step", StepSchema);
