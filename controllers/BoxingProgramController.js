@@ -457,6 +457,108 @@ const getUserCreatedPrograms = async (req, res) => {
   }
 };
 
+const getUserRegisterPrograms = async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Yetkisiz erişim." });
+    }
+
+    const user = await User.findById(userId).populate({
+      path: "programs.programId",
+      model: "BoxingProgram",
+      populate: {
+        path: "days",
+        model: "ProgramDay",
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "Kullanıcı bulunamadı." });
+    }
+
+    // Her program için günleri ve adımları detaylı şekilde getir
+    const registeredPrograms = await Promise.all(
+      user.programs
+        .filter(item => !item.programId.isUserCreated) // Sadece isUserCreated false olan programları filtrele
+        .map(async (item) => {
+        const program = item.programId.toObject();
+        
+        // Program günlerini bul
+        const days = await ProgramDay.find({ programId: program._id }).sort({
+          dayNumber: 1,
+        });
+
+        // Her gün için adımları bul ve hareketleri populate et
+        const daysWithSteps = await Promise.all(
+          days.map(async (day) => {
+            const steps = await Step.find({ dayId: day._id }).sort({ order: 1 });
+
+            // Her adım için seçili hareketleri populate et
+            const stepsWithMovements = await Promise.all(
+              steps.map(async (step) => {
+                const stepObj = step.toObject();
+                
+                // Eğer selectedMovements varsa, hareketleri getir
+                if (step.selectedMovements && step.selectedMovements.length > 0) {
+                  const movements = await Promise.all(
+                    step.selectedMovements.map(async (movementId) => {
+                      const movement = await Movement.findById(movementId);
+                      if (movement) {
+                        // İlk video içeriğini bul
+                        const firstVideoContent = movement.movementContent.find(
+                          content => content.type === "video"
+                        );
+                        
+                        return {
+                          _id: movement._id,
+                          movementName: movement.movementName,
+                          movementDesc: movement.movementDesc,
+                          firstVideoContent: firstVideoContent || null
+                        };
+                      }
+                      return null;
+                    })
+                  );
+                  
+                  stepObj.movements = movements.filter(m => m !== null);
+                }
+                
+                return stepObj;
+              })
+            );
+
+            return {
+              ...day.toObject(),
+              steps: stepsWithMovements,
+            };
+          })
+        );
+
+        return {
+          ...program,
+          days: daysWithSteps,
+          userProgramData: {
+            isCompleted: item.isCompleted,
+            isRegistered: item.isRegistered,
+            completedDays: item.completedDays,
+            days: item.days,
+          },
+        };
+      })
+    );
+
+    res.status(200).json({
+      programs: registeredPrograms,
+      totalCount: registeredPrograms.length,
+    });
+  } catch (err) {
+    console.error("Kullanıcı programları getirme hatası:", err);
+    res.status(500).json({ message: "Sunucu hatası: " + err.message });
+  }
+};
+
 // Programları listele
 const getBoxingPrograms = async (req, res) => {
   try {
@@ -655,4 +757,5 @@ module.exports = {
   getBoxingProgramDetails,
   getUserCreatedPrograms,
   getBoxingProgramDetailsByUser,
+  getUserRegisterPrograms,
 };

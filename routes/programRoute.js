@@ -7,6 +7,7 @@ const {
   getBoxingProgramDetails,
   createBoxingProgramByUser,
   getUserCreatedPrograms,
+  getUserRegisterPrograms,
 } = require("../controllers/BoxingProgramController");
 const authMiddleware = require("../middlewares/authMiddleware");
 const upload = require("../middlewares/upload");
@@ -23,6 +24,7 @@ router.get("/", getBoxingPrograms);
 
 router.get("/getUserCreatedPrograms", authMiddleware, getUserCreatedPrograms);
 
+router.get("/getUserRegisterPrograms", authMiddleware, getUserRegisterPrograms);
 router.get("/:id", getBoxingProgramById);
 
 router.get("/:id/details", getBoxingProgramDetails);
