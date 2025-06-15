@@ -7,7 +7,11 @@ const {
   programIsRegistered,
   completeProgramDay,
   getProgramProgress,
+  completeProgram,
+  getUserStats
 } = require("../controllers/UserController");
+
+router.get("/stats", authMiddleware, getUserStats);
 
 router.post(
   "/:programId/registerProgram",
@@ -17,6 +21,8 @@ router.post(
 router.get("/:programId/isRegistered", authMiddleware, programIsRegistered);
 
 router.patch("/complete-day", authMiddleware, completeProgramDay);
+
+router.patch("/:programId/complete", authMiddleware, completeProgram);
 
 router.get("/:programId/progress", authMiddleware, getProgramProgress);
 

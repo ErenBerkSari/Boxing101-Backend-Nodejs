@@ -111,7 +111,7 @@ const completeProgramDay = async (req, res) => {
     day.lastCompletedStep = lastCompletedStep;
     day.completedAt = new Date();
 
-    // (Opsiyonel) Yeni günün açılma tarihini ayarla – örnek: 24 saat sonra
+    // Yeni günün açılma tarihini ayarla
     const unlockDate = new Date();
     unlockDate.setDate(unlockDate.getDate() + 1);
     day.newDayLockedToDate = unlockDate;
@@ -123,20 +123,19 @@ const completeProgramDay = async (req, res) => {
       completedAt: day.completedAt,
     });
 
-    // Eğer tüm günler tamamlandıysa program da tamamlanmış sayılır
-    const allDaysCompleted = targetProgram.days.every((d) => d.isCompleted);
-    if (allDaysCompleted) {
-      targetProgram.isCompleted = true;
-    }
-
     await user.save();
 
     res.status(200).json({
       message: "Gün başarıyla tamamlandı.",
-      isProgramCompleted: targetProgram.isCompleted,
+      completedDay: {
+        dayId,
+        dayNumber: day.dayNumber,
+        completedAt: day.completedAt,
+        lastCompletedStep
+      }
     });
   } catch (err) {
-    console.error("Tamamlama Hatası:", err);
+    console.error("Gün Tamamlama Hatası:", err);
     res.status(500).json({ message: "Sunucu hatası" });
   }
 };
@@ -195,9 +194,103 @@ const getProgramProgress = async (req, res) => {
   }
 };
 
+const completeProgram = async (req, res) => {
+  const userId = req.user.userId;
+  const { programId } = req.params;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+
+    // Normal programlarda arama
+    let program = user.programs.find(
+      (p) => p.programId.toString() === programId
+    );
+
+    // Kullanıcının oluşturduğu programlarda arama
+    let userCreatedProgram = user.createProgramByUser.find(
+      (p) => p.programId.toString() === programId
+    );
+
+    // Hiçbirinde bulunamadıysa hata ver
+    if (!program && !userCreatedProgram) {
+      return res.status(404).json({ message: "Program bulunamadı" });
+    }
+
+    // Hangi program tipinde çalışıyoruz
+    const targetProgram = program || userCreatedProgram;
+
+    // Program zaten tamamlanmışsa hata ver
+    if (targetProgram.isCompleted) {
+      return res.status(400).json({ message: "Bu program zaten tamamlanmış" });
+    }
+
+    // Programı tamamlandı olarak işaretle
+    targetProgram.isCompleted = true;
+
+    await user.save();
+
+    res.status(200).json({
+      message: "Program başarıyla tamamlandı",
+      programId,
+      isCompleted: true
+    });
+  } catch (error) {
+    console.error("Program tamamlama hatası:", error);
+    res.status(500).json({ message: "Program tamamlanırken bir hata oluştu" });
+  }
+};
+
+const getUserStats = async (req, res) => {
+  const userId = req.user.userId;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+    }
+
+    // Normal programlardaki istatistikler
+    const registeredProgramsCount = user.programs.length;
+    const completedProgramsCount = user.programs.filter(p => p.isCompleted).length;
+
+    // Kullanıcının oluşturduğu programlardaki istatistikler
+    const userCreatedProgramsCount = user.createProgramByUser.length;
+    const userCreatedCompletedProgramsCount = user.createProgramByUser.filter(p => p.isCompleted).length;
+
+    // Toplam istatistikler
+    const totalProgramsCount = registeredProgramsCount + userCreatedProgramsCount;
+    const totalCompletedProgramsCount = completedProgramsCount + userCreatedCompletedProgramsCount;
+
+    res.status(200).json({
+      user: {
+        username: user.username,
+        email: user.email,
+        role: user.role
+      },
+      stats: {
+        totalPrograms: totalProgramsCount,
+        totalCompletedPrograms: totalCompletedProgramsCount,
+        registeredPrograms: registeredProgramsCount,
+        completedRegisteredPrograms: completedProgramsCount,
+        userCreatedPrograms: userCreatedProgramsCount,
+        completedUserCreatedPrograms: userCreatedCompletedProgramsCount
+      }
+    });
+  } catch (error) {
+    console.error("Kullanıcı istatistikleri alınamadı:", error);
+    res.status(500).json({ 
+      message: "Kullanıcı istatistikleri alınırken bir hata oluştu",
+      error: error.message 
+    });
+  }
+};
+
 module.exports = {
   programIsRegistered,
   registerBoxingProgram,
   completeProgramDay,
   getProgramProgress,
+  completeProgram,
+  getUserStats
 };
