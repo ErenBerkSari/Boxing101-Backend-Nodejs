@@ -80,13 +80,25 @@ const completeProgramDay = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "Kullanıcı bulunamadı" });
 
-    const program = user.programs.find(
+    // Normal programlarda arama
+    let program = user.programs.find(
       (p) => p.programId.toString() === programId
     );
-    if (!program)
-      return res.status(404).json({ message: "Program bulunamadı" });
 
-    const day = program.days.find((d) => d.dayId.toString() === dayId);
+    // Kullanıcının oluşturduğu programlarda arama
+    let userCreatedProgram = user.createProgramByUser.find(
+      (p) => p.programId.toString() === programId
+    );
+
+    // Hiçbirinde bulunamadıysa hata ver
+    if (!program && !userCreatedProgram) {
+      return res.status(404).json({ message: "Program bulunamadı" });
+    }
+
+    // Hangi program tipinde çalışıyoruz
+    const targetProgram = program || userCreatedProgram;
+
+    const day = targetProgram.days.find((d) => d.dayId.toString() === dayId);
     if (!day) return res.status(404).json({ message: "Gün bulunamadı" });
 
     // Gün zaten tamamlandıysa tekrar ekleme yapma
@@ -105,23 +117,23 @@ const completeProgramDay = async (req, res) => {
     day.newDayLockedToDate = unlockDate;
 
     // completedDays'e kayıt ekle
-    program.completedDays.push({
+    targetProgram.completedDays.push({
       dayId,
       dayNumber: day.dayNumber,
       completedAt: day.completedAt,
     });
 
     // Eğer tüm günler tamamlandıysa program da tamamlanmış sayılır
-    const allDaysCompleted = program.days.every((d) => d.isCompleted);
+    const allDaysCompleted = targetProgram.days.every((d) => d.isCompleted);
     if (allDaysCompleted) {
-      program.isCompleted = true;
+      targetProgram.isCompleted = true;
     }
 
     await user.save();
 
     res.status(200).json({
       message: "Gün başarıyla tamamlandı.",
-      isProgramCompleted: program.isCompleted,
+      isProgramCompleted: targetProgram.isCompleted,
     });
   } catch (err) {
     console.error("Tamamlama Hatası:", err);

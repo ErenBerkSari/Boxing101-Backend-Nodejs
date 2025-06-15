@@ -539,6 +539,7 @@ const getUserRegisterPrograms = async (req, res) => {
         return {
           ...program,
           days: daysWithSteps,
+          isCompleted: item.isCompleted,
           userProgramData: {
             isCompleted: item.isCompleted,
             isRegistered: item.isRegistered,
