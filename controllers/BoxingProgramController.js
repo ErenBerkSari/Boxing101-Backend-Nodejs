@@ -322,26 +322,31 @@ const createBoxingProgramByUser = async (req, res) => {
 
     // Kullanıcının createProgramByUser dizisine programı ekle
     const user = await User.findById(userId);
-    if (user) {
-      user.createProgramByUser.push({
-        programId: savedProgram._id,
-        isCompleted: false,
-        isRegistered: true, // Kendi oluşturduğu program otomatik kayıtlı
-        completedDays: [],
-        days: savedDays.map((day) => ({
-          dayId: day._id,
-          isCompleted: false,
-          lastCompletedStep: 0,
-          completedAt: null,
-          newDayLockedToDate: null,
-        })),
-      });
+if (user) {
+  // Önce bu programın zaten eklenip eklenmediğini kontrol et
+  const existingProgram = user.createProgramByUser.find(
+    p => p.programId.toString() === savedProgram._id.toString()
+  );
 
-      await user.save();
-      console.log(
-        "Program kullanıcının createProgramByUser listesine eklendi."
-      );
-    }
+  if (!existingProgram) {
+    user.createProgramByUser.push({
+      programId: savedProgram._id,
+      isCompleted: false,
+      isRegistered: true,
+      completedDays: [],
+      days: savedDays.map((day) => ({
+        dayId: day._id,
+        isCompleted: false,
+        lastCompletedStep: 0,
+        completedAt: null,
+        newDayLockedToDate: null,
+      })),
+    });
+
+    await user.save();
+    console.log("Program kullanıcının createProgramByUser listesine eklendi.");
+  }
+}
 
     res.status(201).json({
       message: "Program başarıyla oluşturuldu.",
@@ -382,7 +387,7 @@ const getUserCreatedPrograms = async (req, res) => {
     const userCreatedPrograms = await Promise.all(
       user.createProgramByUser.map(async (item) => {
         const program = item.programId.toObject();
-        
+
         // Program günlerini bul
         const days = await ProgramDay.find({ programId: program._id }).sort({
           dayNumber: 1,
@@ -391,38 +396,43 @@ const getUserCreatedPrograms = async (req, res) => {
         // Her gün için adımları bul ve hareketleri populate et
         const daysWithSteps = await Promise.all(
           days.map(async (day) => {
-            const steps = await Step.find({ dayId: day._id }).sort({ order: 1 });
+            const steps = await Step.find({ dayId: day._id }).sort({
+              order: 1,
+            });
 
             // Her adım için seçili hareketleri populate et
             const stepsWithMovements = await Promise.all(
               steps.map(async (step) => {
                 const stepObj = step.toObject();
-                
+
                 // Eğer selectedMovements varsa, hareketleri getir
-                if (step.selectedMovements && step.selectedMovements.length > 0) {
+                if (
+                  step.selectedMovements &&
+                  step.selectedMovements.length > 0
+                ) {
                   const movements = await Promise.all(
                     step.selectedMovements.map(async (movementId) => {
                       const movement = await Movement.findById(movementId);
                       if (movement) {
                         // İlk video içeriğini bul
                         const firstVideoContent = movement.movementContent.find(
-                          content => content.type === "video"
+                          (content) => content.type === "video"
                         );
-                        
+
                         return {
                           _id: movement._id,
                           movementName: movement.movementName,
                           movementDesc: movement.movementDesc,
-                          firstVideoContent: firstVideoContent || null
+                          firstVideoContent: firstVideoContent || null,
                         };
                       }
                       return null;
                     })
                   );
-                  
-                  stepObj.movements = movements.filter(m => m !== null);
+
+                  stepObj.movements = movements.filter((m) => m !== null);
                 }
-                
+
                 return stepObj;
               })
             );
@@ -481,73 +491,79 @@ const getUserRegisterPrograms = async (req, res) => {
     // Her program için günleri ve adımları detaylı şekilde getir
     const registeredPrograms = await Promise.all(
       user.programs
-        .filter(item => !item.programId.isUserCreated) // Sadece isUserCreated false olan programları filtrele
+        .filter((item) => !item.programId.isUserCreated) // Sadece isUserCreated false olan programları filtrele
         .map(async (item) => {
-        const program = item.programId.toObject();
-        
-        // Program günlerini bul
-        const days = await ProgramDay.find({ programId: program._id }).sort({
-          dayNumber: 1,
-        });
+          const program = item.programId.toObject();
 
-        // Her gün için adımları bul ve hareketleri populate et
-        const daysWithSteps = await Promise.all(
-          days.map(async (day) => {
-            const steps = await Step.find({ dayId: day._id }).sort({ order: 1 });
+          // Program günlerini bul
+          const days = await ProgramDay.find({ programId: program._id }).sort({
+            dayNumber: 1,
+          });
 
-            // Her adım için seçili hareketleri populate et
-            const stepsWithMovements = await Promise.all(
-              steps.map(async (step) => {
-                const stepObj = step.toObject();
-                
-                // Eğer selectedMovements varsa, hareketleri getir
-                if (step.selectedMovements && step.selectedMovements.length > 0) {
-                  const movements = await Promise.all(
-                    step.selectedMovements.map(async (movementId) => {
-                      const movement = await Movement.findById(movementId);
-                      if (movement) {
-                        // İlk video içeriğini bul
-                        const firstVideoContent = movement.movementContent.find(
-                          content => content.type === "video"
-                        );
-                        
-                        return {
-                          _id: movement._id,
-                          movementName: movement.movementName,
-                          movementDesc: movement.movementDesc,
-                          firstVideoContent: firstVideoContent || null
-                        };
-                      }
-                      return null;
-                    })
-                  );
-                  
-                  stepObj.movements = movements.filter(m => m !== null);
-                }
-                
-                return stepObj;
-              })
-            );
+          // Her gün için adımları bul ve hareketleri populate et
+          const daysWithSteps = await Promise.all(
+            days.map(async (day) => {
+              const steps = await Step.find({ dayId: day._id }).sort({
+                order: 1,
+              });
 
-            return {
-              ...day.toObject(),
-              steps: stepsWithMovements,
-            };
-          })
-        );
+              // Her adım için seçili hareketleri populate et
+              const stepsWithMovements = await Promise.all(
+                steps.map(async (step) => {
+                  const stepObj = step.toObject();
 
-        return {
-          ...program,
-          days: daysWithSteps,
-          isCompleted: item.isCompleted,
-          userProgramData: {
+                  // Eğer selectedMovements varsa, hareketleri getir
+                  if (
+                    step.selectedMovements &&
+                    step.selectedMovements.length > 0
+                  ) {
+                    const movements = await Promise.all(
+                      step.selectedMovements.map(async (movementId) => {
+                        const movement = await Movement.findById(movementId);
+                        if (movement) {
+                          // İlk video içeriğini bul
+                          const firstVideoContent =
+                            movement.movementContent.find(
+                              (content) => content.type === "video"
+                            );
+
+                          return {
+                            _id: movement._id,
+                            movementName: movement.movementName,
+                            movementDesc: movement.movementDesc,
+                            firstVideoContent: firstVideoContent || null,
+                          };
+                        }
+                        return null;
+                      })
+                    );
+
+                    stepObj.movements = movements.filter((m) => m !== null);
+                  }
+
+                  return stepObj;
+                })
+              );
+
+              return {
+                ...day.toObject(),
+                steps: stepsWithMovements,
+              };
+            })
+          );
+
+          return {
+            ...program,
+            days: daysWithSteps,
             isCompleted: item.isCompleted,
-            isRegistered: item.isRegistered,
-            completedDays: item.completedDays,
-            days: item.days,
-          },
-        };
-      })
+            userProgramData: {
+              isCompleted: item.isCompleted,
+              isRegistered: item.isRegistered,
+              completedDays: item.completedDays,
+              days: item.days,
+            },
+          };
+        })
     );
 
     res.status(200).json({
@@ -602,7 +618,7 @@ const getBoxingProgramById = async (req, res) => {
         const stepsWithMovements = await Promise.all(
           steps.map(async (step) => {
             const stepObj = step.toObject();
-            
+
             // Eğer selectedMovements varsa, hareketleri getir
             if (step.selectedMovements && step.selectedMovements.length > 0) {
               const movements = await Promise.all(
@@ -611,23 +627,23 @@ const getBoxingProgramById = async (req, res) => {
                   if (movement) {
                     // İlk video içeriğini bul
                     const firstVideoContent = movement.movementContent.find(
-                      content => content.type === "video"
+                      (content) => content.type === "video"
                     );
-                    
+
                     return {
                       _id: movement._id,
                       movementName: movement.movementName,
                       movementDesc: movement.movementDesc,
-                      firstVideoContent: firstVideoContent || null
+                      firstVideoContent: firstVideoContent || null,
                     };
                   }
                   return null;
                 })
               );
-              
-              stepObj.movements = movements.filter(m => m !== null);
+
+              stepObj.movements = movements.filter((m) => m !== null);
             }
-            
+
             return stepObj;
           })
         );
@@ -782,11 +798,12 @@ const getUserCreatedAndDefaultPrograms = async (req, res) => {
 
     // Her iki program dizisini birleştir
     const allUserPrograms = [
-      ...user.programs.filter(item => 
-        item.programId.isUserCreated === true || 
-        item.programId.isUserCreated === undefined
+      ...user.programs.filter(
+        (item) =>
+          item.programId.isUserCreated === true ||
+          item.programId.isUserCreated === undefined
       ),
-      ...user.createProgramByUser // Kullanıcının oluşturduğu programlar zaten user-created
+      ...user.createProgramByUser, // Kullanıcının oluşturduğu programlar zaten user-created
     ];
 
     // Her program için günleri ve adımları detaylı şekilde getir
@@ -802,7 +819,9 @@ const getUserCreatedAndDefaultPrograms = async (req, res) => {
         // Her gün için adımları bul ve hareketleri populate et
         const daysWithSteps = await Promise.all(
           days.map(async (day) => {
-            const steps = await Step.find({ dayId: day._id }).sort({ order: 1 });
+            const steps = await Step.find({ dayId: day._id }).sort({
+              order: 1,
+            });
 
             // Her adım için seçili hareketleri populate et
             const stepsWithMovements = await Promise.all(
@@ -810,28 +829,31 @@ const getUserCreatedAndDefaultPrograms = async (req, res) => {
                 const stepObj = step.toObject();
 
                 // Eğer selectedMovements varsa, hareketleri getir
-                if (step.selectedMovements && step.selectedMovements.length > 0) {
+                if (
+                  step.selectedMovements &&
+                  step.selectedMovements.length > 0
+                ) {
                   const movements = await Promise.all(
                     step.selectedMovements.map(async (movementId) => {
                       const movement = await Movement.findById(movementId);
                       if (movement) {
                         // İlk video içeriğini bul
                         const firstVideoContent = movement.movementContent.find(
-                          content => content.type === "video"
+                          (content) => content.type === "video"
                         );
 
                         return {
                           _id: movement._id,
                           movementName: movement.movementName,
                           movementDesc: movement.movementDesc,
-                          firstVideoContent: firstVideoContent || null
+                          firstVideoContent: firstVideoContent || null,
                         };
                       }
                       return null;
                     })
                   );
 
-                  stepObj.movements = movements.filter(m => m !== null);
+                  stepObj.movements = movements.filter((m) => m !== null);
                 }
 
                 return stepObj;
@@ -878,5 +900,5 @@ module.exports = {
   getUserCreatedPrograms,
   getBoxingProgramDetailsByUser,
   getUserRegisterPrograms,
-  getUserCreatedAndDefaultPrograms
+  getUserCreatedAndDefaultPrograms,
 };

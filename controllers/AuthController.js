@@ -80,11 +80,9 @@ const register = async (req, res) => {
     });
   } catch (error) {
     console.error("Sunucu hatası: ", error);
-    res
-      .status(500)
-      .json({
-        message: "Bir hata oluştu. Lütfen daha sonra tekrar deneyiniz.",
-      });
+    res.status(500).json({
+      message: "Bir hata oluştu. Lütfen daha sonra tekrar deneyiniz.",
+    });
   }
 };
 
@@ -133,11 +131,9 @@ const login = async (req, res) => {
     res.json({ userId: user._id, email, role: user.role });
   } catch (error) {
     console.error("Sunucu hatası", error);
-    res
-      .status(500)
-      .json({
-        message: "Bir hata oluştu. Lütfen daha sonra tekrar deneyiniz.",
-      });
+    res.status(500).json({
+      message: "Bir hata oluştu. Lütfen daha sonra tekrar deneyiniz.",
+    });
   }
 };
 
@@ -158,11 +154,9 @@ const logout = async (req, res) => {
     });
     res.status(200).json({ message: "Çıkış başarılı." });
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        message: "Bir hata oluştu. Lütfen daha sonra tekrar deneyiniz.",
-      });
+    res.status(500).json({
+      message: "Bir hata oluştu. Lütfen daha sonra tekrar deneyiniz.",
+    });
   }
 };
 
@@ -260,11 +254,9 @@ const getAuthUser = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Kullanıcı bilgileri alınırken hata:", error.message);
-    res
-      .status(500)
-      .json({
-        message: "Bir hata oluştu. Lütfen daha sonra tekrar deneyiniz.",
-      });
+    res.status(500).json({
+      message: "Bir hata oluştu. Lütfen daha sonra tekrar deneyiniz.",
+    });
   }
 };
 

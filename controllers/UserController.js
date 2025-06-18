@@ -1,5 +1,7 @@
 const ProgramDay = require("../models/ProgramDay");
 const User = require("../models/User");
+const dayjs = require("dayjs");
+const BoxingProgram = require("../models/BoxingProgram");
 
 const registerBoxingProgram = async (req, res) => {
   const userId = req.user.userId;
@@ -112,8 +114,7 @@ const completeProgramDay = async (req, res) => {
     day.completedAt = new Date();
 
     // Yeni günün açılma tarihini ayarla
-    const unlockDate = new Date();
-    unlockDate.setDate(unlockDate.getDate() + 1);
+    const unlockDate = dayjs().add(30, 'seconds').toDate();
     day.newDayLockedToDate = unlockDate;
 
     // completedDays'e kayıt ekle
@@ -131,8 +132,8 @@ const completeProgramDay = async (req, res) => {
         dayId,
         dayNumber: day.dayNumber,
         completedAt: day.completedAt,
-        lastCompletedStep
-      }
+        lastCompletedStep,
+      },
     });
   } catch (err) {
     console.error("Gün Tamamlama Hatası:", err);
@@ -146,9 +147,7 @@ const getProgramProgress = async (req, res) => {
 
   try {
     const user = await User.findById(userId);
-
-    if (!user)
-      return res.status(404).json({ message: "Kullanıcı bulunamadı." });
+    if (!user) return res.status(404).json({ message: "Kullanıcı bulunamadı." });
 
     // Programı bul
     const program = user.programs.find(
@@ -156,34 +155,50 @@ const getProgramProgress = async (req, res) => {
     );
 
     if (!program) {
-      return res
-        .status(404)
-        .json({ message: "Kullanıcı bu programa kayıtlı değil." });
+      return res.status(404).json({ message: "Kullanıcı bu programa kayıtlı değil." });
     }
 
-    // Günlük ilerleme
-    const progressByDays =
-      program.days?.map((day) => ({
-        dayId: day.dayId,
-        isCompleted: day.isCompleted,
-        lastCompletedStep: day.lastCompletedStep,
-        completedAt: day.completedAt,
-        newDayLockedToDate: day.newDayLockedToDate,
-      })) || [];
+    // Program detaylarını getir (toplam gün sayısı için)
+    const programDetails = await BoxingProgram.findById(programId);
+    const totalDays = programDetails?.days?.length || 0;
 
-    // Tamamlanan günler (ayrı ayrı göstermek istersen)
-    const completedDays =
-      program.completedDays?.map((cd) => ({
-        dayId: cd.dayId,
-        completedAt: cd.completedAt,
-      })) || [];
+    // Günlük ilerleme
+    const progressByDays = program.days?.map((day) => ({
+      dayId: day.dayId,
+      isCompleted: day.isCompleted,
+      lastCompletedStep: day.lastCompletedStep,
+      completedAt: day.completedAt,
+      newDayLockedToDate: day.newDayLockedToDate,
+    })) || [];
+
+    // Tamamlanan günler
+    const completedDays = program.completedDays?.map((cd) => ({
+      dayId: cd.dayId,
+      completedAt: cd.completedAt,
+    })) || [];
+
+    // Program tamamlanma durumunu kontrol et
+    const uniqueCompletedDays = new Set(completedDays.map(day => day.dayId));
+    const isCompleted = uniqueCompletedDays.size === totalDays;
+
+    // Son tamamlanan günü bul
+    const lastCompletedDay = completedDays.length > 0
+      ? completedDays.reduce((latest, current) => 
+          new Date(current.completedAt) > new Date(latest.completedAt) ? current : latest
+        )
+      : null;
 
     return res.status(200).json({
       programId,
-      isCompleted: program.isCompleted,
+      isCompleted,
       isRegistered: program.isRegistered,
       progress: progressByDays,
       completedDays,
+      totalDays,
+      lastCompletedAt: lastCompletedDay?.completedAt || null,
+      newDayLockedToDate: lastCompletedDay 
+        ? progressByDays.find(p => p.dayId === lastCompletedDay.dayId)?.newDayLockedToDate 
+        : null
     });
   } catch (error) {
     console.error("İlerleme verisi alınamadı:", error);
@@ -233,7 +248,7 @@ const completeProgram = async (req, res) => {
     res.status(200).json({
       message: "Program başarıyla tamamlandı",
       programId,
-      isCompleted: true
+      isCompleted: true,
     });
   } catch (error) {
     console.error("Program tamamlama hatası:", error);
@@ -252,21 +267,27 @@ const getUserStats = async (req, res) => {
 
     // Normal programlardaki istatistikler
     const registeredProgramsCount = user.programs.length;
-    const completedProgramsCount = user.programs.filter(p => p.isCompleted).length;
+    const completedProgramsCount = user.programs.filter(
+      (p) => p.isCompleted
+    ).length;
 
     // Kullanıcının oluşturduğu programlardaki istatistikler
     const userCreatedProgramsCount = user.createProgramByUser.length;
-    const userCreatedCompletedProgramsCount = user.createProgramByUser.filter(p => p.isCompleted).length;
+    const userCreatedCompletedProgramsCount = user.createProgramByUser.filter(
+      (p) => p.isCompleted
+    ).length;
 
     // Toplam istatistikler
-    const totalProgramsCount = registeredProgramsCount + userCreatedProgramsCount;
-    const totalCompletedProgramsCount = completedProgramsCount + userCreatedCompletedProgramsCount;
+    const totalProgramsCount =
+      registeredProgramsCount + userCreatedProgramsCount;
+    const totalCompletedProgramsCount =
+      completedProgramsCount + userCreatedCompletedProgramsCount;
 
     res.status(200).json({
       user: {
         username: user.username,
         email: user.email,
-        role: user.role
+        role: user.role,
       },
       stats: {
         totalPrograms: totalProgramsCount,
@@ -274,14 +295,14 @@ const getUserStats = async (req, res) => {
         registeredPrograms: registeredProgramsCount,
         completedRegisteredPrograms: completedProgramsCount,
         userCreatedPrograms: userCreatedProgramsCount,
-        completedUserCreatedPrograms: userCreatedCompletedProgramsCount
-      }
+        completedUserCreatedPrograms: userCreatedCompletedProgramsCount,
+      },
     });
   } catch (error) {
     console.error("Kullanıcı istatistikleri alınamadı:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: "Kullanıcı istatistikleri alınırken bir hata oluştu",
-      error: error.message 
+      error: error.message,
     });
   }
 };
@@ -292,5 +313,5 @@ module.exports = {
   completeProgramDay,
   getProgramProgress,
   completeProgram,
-  getUserStats
+  getUserStats,
 };
