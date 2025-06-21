@@ -75,6 +75,7 @@ const register = async (req, res) => {
     res.status(201).json({
       userId: newUser._id,
       email,
+      username: newUser.username,
       role: newUser.role,
       message: "Kayıt başarılı.",
     });
@@ -128,7 +129,13 @@ const login = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.json({ userId: user._id, email, role: user.role });
+    res.status(200).json({ 
+      userId: user._id, 
+      email, 
+      username: user.username, 
+      role: user.role,
+      message: "Giriş başarılı! Hoş geldiniz." 
+    });
   } catch (error) {
     console.error("Sunucu hatası", error);
     res.status(500).json({
@@ -261,7 +268,7 @@ const getAuthUser = async (req, res) => {
 };
 
 const getServerDate = async (req, res) => {
-  res.json({ today: dayjs().startOf("day").toISOString() });
+  res.json({ now: dayjs().toISOString() });
 };
 
 module.exports = {

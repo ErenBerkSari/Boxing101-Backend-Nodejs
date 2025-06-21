@@ -5,7 +5,8 @@ const authMiddleware = require("../middlewares/authMiddleware");
 const {
   registerBoxingProgram,
   programIsRegistered,
-  completeProgramDay,
+  completeDefaultProgramDay,
+  completeUserCreatedProgramDay,
   getProgramProgress,
   completeProgram,
   getUserStats
@@ -20,7 +21,9 @@ router.post(
 );
 router.get("/:programId/isRegistered", authMiddleware, programIsRegistered);
 
-router.patch("/complete-day", authMiddleware, completeProgramDay);
+router.patch("/complete-day-default", authMiddleware, completeDefaultProgramDay);
+
+router.patch("/complete-user-created-day", authMiddleware, completeUserCreatedProgramDay);
 
 router.patch("/:programId/complete", authMiddleware, completeProgram);
 

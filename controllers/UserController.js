@@ -59,11 +59,15 @@ const programIsRegistered = async (req, res) => {
     if (!user)
       return res.status(404).json({ message: "Kullanıcı bulunamadı." });
 
+    // Hem programs hem de createProgramByUser dizilerinde arama
     const program = user.programs.find(
       (p) => p.programId.toString() === programId
     );
+    const userCreatedProgram = user.createProgramByUser.find(
+      (p) => p.programId.toString() === programId
+    );
 
-    const isRegistered = program?.isRegistered || false;
+    const isRegistered = (program?.isRegistered || userCreatedProgram?.isRegistered) || false;
     res.status(200).json({ isRegistered });
   } catch (error) {
     console.error("Program register check error:", error);
@@ -74,7 +78,7 @@ const programIsRegistered = async (req, res) => {
   }
 };
 
-const completeProgramDay = async (req, res) => {
+const completeDefaultProgramDay = async (req, res) => {
   const userId = req.user.userId;
   const { programId, dayId, lastCompletedStep = 0 } = req.body;
 
@@ -82,43 +86,28 @@ const completeProgramDay = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "Kullanıcı bulunamadı" });
 
-    // Normal programlarda arama
+    // Sadece admin programlarında arama
     let program = user.programs.find(
       (p) => p.programId.toString() === programId
     );
-
-    // Kullanıcının oluşturduğu programlarda arama
-    let userCreatedProgram = user.createProgramByUser.find(
-      (p) => p.programId.toString() === programId
-    );
-
-    // Hiçbirinde bulunamadıysa hata ver
-    if (!program && !userCreatedProgram) {
+    if (!program) {
       return res.status(404).json({ message: "Program bulunamadı" });
     }
 
-    // Hangi program tipinde çalışıyoruz
-    const targetProgram = program || userCreatedProgram;
-
-    const day = targetProgram.days.find((d) => d.dayId.toString() === dayId);
+    const day = program.days.find((d) => d.dayId.toString() === dayId);
     if (!day) return res.status(404).json({ message: "Gün bulunamadı" });
 
-    // Gün zaten tamamlandıysa tekrar ekleme yapma
     if (day.isCompleted) {
       return res.status(200).json({ message: "Bu gün zaten tamamlandı." });
     }
 
-    // Gün bilgilerini güncelle
     day.isCompleted = true;
     day.lastCompletedStep = lastCompletedStep;
     day.completedAt = new Date();
-
-    // Yeni günün açılma tarihini ayarla
-    const unlockDate = dayjs().add(30, 'seconds').toDate();
+    const unlockDate = dayjs().add(1, 'day').toDate();
     day.newDayLockedToDate = unlockDate;
 
-    // completedDays'e kayıt ekle
-    targetProgram.completedDays.push({
+    program.completedDays.push({
       dayId,
       dayNumber: day.dayNumber,
       completedAt: day.completedAt,
@@ -136,7 +125,59 @@ const completeProgramDay = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Gün Tamamlama Hatası:", err);
+    console.error("Gün Tamamlama Hatası (default):", err);
+    res.status(500).json({ message: "Sunucu hatası" });
+  }
+};
+
+const completeUserCreatedProgramDay = async (req, res) => {
+  const userId = req.user.userId;
+  const { programId, dayId, lastCompletedStep = 0 } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+
+    // Sadece kullanıcı tarafından oluşturulan programlarda arama
+    let userCreatedProgram = user.createProgramByUser.find(
+      (p) => p.programId.toString() === programId
+    );
+    if (!userCreatedProgram) {
+      return res.status(404).json({ message: "Program bulunamadı" });
+    }
+
+    const day = userCreatedProgram.days.find((d) => d.dayId.toString() === dayId);
+    if (!day) return res.status(404).json({ message: "Gün bulunamadı" });
+
+    if (day.isCompleted) {
+      return res.status(200).json({ message: "Bu gün zaten tamamlandı." });
+    }
+
+    day.isCompleted = true;
+    day.lastCompletedStep = lastCompletedStep;
+    day.completedAt = new Date();
+    const unlockDate = dayjs().add(1, 'day').toDate();
+    day.newDayLockedToDate = unlockDate;
+
+    userCreatedProgram.completedDays.push({
+      dayId,
+      dayNumber: day.dayNumber,
+      completedAt: day.completedAt,
+    });
+
+    await user.save();
+
+    res.status(200).json({
+      message: "Gün başarıyla tamamlandı.",
+      completedDay: {
+        dayId,
+        dayNumber: day.dayNumber,
+        completedAt: day.completedAt,
+        lastCompletedStep,
+      },
+    });
+  } catch (err) {
+    console.error("Gün Tamamlama Hatası (userCreated):", err);
     res.status(500).json({ message: "Sunucu hatası" });
   }
 };
@@ -149,12 +190,16 @@ const getProgramProgress = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "Kullanıcı bulunamadı." });
 
-    // Programı bul
-    const program = user.programs.find(
+    // Programı önce programs dizisinde, sonra createProgramByUser dizisinde ara
+    let program = user.programs.find(
       (p) => p.programId.toString() === programId
     );
+    let userCreatedProgram = user.createProgramByUser.find(
+      (p) => p.programId.toString() === programId
+    );
+    const targetProgram = program || userCreatedProgram;
 
-    if (!program) {
+    if (!targetProgram) {
       return res.status(404).json({ message: "Kullanıcı bu programa kayıtlı değil." });
     }
 
@@ -163,7 +208,7 @@ const getProgramProgress = async (req, res) => {
     const totalDays = programDetails?.days?.length || 0;
 
     // Günlük ilerleme
-    const progressByDays = program.days?.map((day) => ({
+    const progressByDays = targetProgram.days?.map((day) => ({
       dayId: day.dayId,
       isCompleted: day.isCompleted,
       lastCompletedStep: day.lastCompletedStep,
@@ -172,14 +217,14 @@ const getProgramProgress = async (req, res) => {
     })) || [];
 
     // Tamamlanan günler
-    const completedDays = program.completedDays?.map((cd) => ({
+    const completedDays = targetProgram.completedDays?.map((cd) => ({
       dayId: cd.dayId,
       completedAt: cd.completedAt,
     })) || [];
 
     // Program tamamlanma durumunu kontrol et
     const uniqueCompletedDays = new Set(completedDays.map(day => day.dayId));
-    const isCompleted = uniqueCompletedDays.size === totalDays;
+    const isCompleted = totalDays > 0 && uniqueCompletedDays.size === totalDays;
 
     // Son tamamlanan günü bul
     const lastCompletedDay = completedDays.length > 0
@@ -191,7 +236,7 @@ const getProgramProgress = async (req, res) => {
     return res.status(200).json({
       programId,
       isCompleted,
-      isRegistered: program.isRegistered,
+      isRegistered: targetProgram.isRegistered,
       progress: progressByDays,
       completedDays,
       totalDays,
@@ -310,7 +355,8 @@ const getUserStats = async (req, res) => {
 module.exports = {
   programIsRegistered,
   registerBoxingProgram,
-  completeProgramDay,
+  completeDefaultProgramDay,
+  completeUserCreatedProgramDay,
   getProgramProgress,
   completeProgram,
   getUserStats,

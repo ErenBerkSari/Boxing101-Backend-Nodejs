@@ -169,11 +169,65 @@ const createBoxingProgramByUser = async (req, res) => {
     const programData = JSON.parse(req.body.data);
     const { title, description, duration, days } = programData;
 
-    // Validasyon
-    if (!title || !days || !Array.isArray(days) || days.length === 0) {
+    // Validasyon - title, duration, days zorunlu alanlar
+    if (!title || !title.trim()) {
       return res
         .status(400)
-        .json({ message: "Eksik veya hatalı veri gönderildi." });
+        .json({ message: "Program başlığı zorunludur." });
+    }
+
+    if (!duration || duration <= 0) {
+      return res
+        .status(400)
+        .json({ message: "Program süresi zorunludur ve 0'dan büyük olmalıdır." });
+    }
+
+    if (!days || !Array.isArray(days) || days.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "Program günleri zorunludur ve en az bir gün olmalıdır." });
+    }
+
+    // Günlerin içeriğini kontrol et
+    for (let i = 0; i < days.length; i++) {
+      const day = days[i];
+      
+      if (!day.steps || !Array.isArray(day.steps) || day.steps.length === 0) {
+        return res
+          .status(400)
+          .json({ message: `Gün ${day.dayNumber || i + 1} için en az bir adım zorunludur.` });
+      }
+
+      // Her adımın title ve selectedMovements alanlarını kontrol et
+      for (let j = 0; j < day.steps.length; j++) {
+        const step = day.steps[j];
+        
+        if (!step.title || !step.title.trim()) {
+          return res
+            .status(400)
+            .json({ message: `Gün ${day.dayNumber || i + 1}, Adım ${j + 1} için başlık zorunludur.` });
+        }
+
+        if (!step.selectedMovements || !Array.isArray(step.selectedMovements) || step.selectedMovements.length === 0) {
+          return res
+            .status(400)
+            .json({ message: `Gün ${day.dayNumber || i + 1}, Adım ${j + 1} için en az bir hareket seçilmelidir.` });
+        }
+      }
+    }
+
+    // Kapak görseli kontrolü
+    if (!req.files || req.files.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "Kapak görseli zorunludur." });
+    }
+
+    const coverFile = req.files.find((file) => file.fieldname === "cover");
+    if (!coverFile) {
+      return res
+        .status(400)
+        .json({ message: "Kapak görseli zorunludur." });
     }
 
     // Medya dosyalarını yükle ve URL'lerini topla
@@ -205,31 +259,28 @@ const createBoxingProgramByUser = async (req, res) => {
       }
     }
 
-    // Kapak görseli
+    // Kapak görseli yükleme
     let coverImageUrl = null;
-    if (req.files && req.files.length > 0) {
-      const coverFile = req.files.find((file) => file.fieldname === "cover");
-
-      if (coverFile) {
-        try {
-          const uploadCover = await new Promise((resolve, reject) => {
-            const stream = cloudinary.uploader.upload_stream(
-              {
-                folder: "boxingPrograms/userCreated/covers",
-                resource_type: "image",
-              },
-              (err, result) => {
-                if (err) return reject(err);
-                resolve(result.secure_url);
-              }
-            );
-            Readable.from(coverFile.buffer).pipe(stream);
-          });
-          coverImageUrl = uploadCover;
-        } catch (uploadError) {
-          console.error("Kapak görsel yükleme hatası:", uploadError);
-        }
-      }
+    try {
+      const uploadCover = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: "boxingPrograms/userCreated/covers",
+            resource_type: "image",
+          },
+          (err, result) => {
+            if (err) return reject(err);
+            resolve(result.secure_url);
+          }
+        );
+        Readable.from(coverFile.buffer).pipe(stream);
+      });
+      coverImageUrl = uploadCover;
+    } catch (uploadError) {
+      console.error("Kapak görsel yükleme hatası:", uploadError);
+      return res
+        .status(500)
+        .json({ message: "Kapak görseli yüklenirken hata oluştu." });
     }
 
     // Program oluşturma
@@ -579,7 +630,7 @@ const getUserRegisterPrograms = async (req, res) => {
 // Programları listele
 const getBoxingPrograms = async (req, res) => {
   try {
-    const programs = await BoxingProgram.find({}).sort({ _id: -1 });
+    const programs = await BoxingProgram.find({createdBy:null}).sort({ _id: -1 });
     res.status(200).json(programs);
   } catch (error) {
     console.error("Programları getirme hatası:", error);
