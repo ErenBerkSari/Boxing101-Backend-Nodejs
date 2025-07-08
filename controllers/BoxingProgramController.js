@@ -119,13 +119,14 @@ const createBoxingProgram = async (req, res) => {
             mediaUrl = uploadedMedia[step.videoName];
           }
 
-          const newStep = new Step({
-            dayId: savedDay._id,
-            order: i + 1,
-            title: step.title || `Adım ${i + 1}`,
-            duration: step.duration || 30,
-            videoUrl: mediaUrl,
-          });
+const newStep = new Step({
+  dayId: savedDay._id,
+  order: i + 1,
+  title: step.title || `Adım ${i + 1}`,
+  description: step.description || "", 
+  duration: step.duration || 30,
+  videoUrl: mediaUrl,
+});
 
           const savedStep = await newStep.save();
           console.log(

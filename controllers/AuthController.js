@@ -177,8 +177,20 @@ const refresh = async (req, res) => {
       userId: decoded.userId,
       refreshToken,
     });
-    if (!tokenRecord)
+    if (!tokenRecord) {
+      // Geçersiz refresh token durumunda cookie'leri temizle
+      res.clearCookie("accessToken", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+      });
+      res.clearCookie("refreshToken", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+      });
       return res.status(403).json({ message: "Geçersiz refresh token" });
+    }
 
     const user = await User.findById(decoded.userId);
     const newAccessToken = generateAccessToken(user);
@@ -208,6 +220,17 @@ const refresh = async (req, res) => {
 
     res.json({ message: "Access token yenilendi." });
   } catch (error) {
+    // JWT verify hatası durumunda da cookie'leri temizle
+    res.clearCookie("accessToken", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+    });
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+    });
     return res
       .status(401)
       .json({ message: "Yetkisiz: Geçersiz veya süresi dolmuş refresh token" });
