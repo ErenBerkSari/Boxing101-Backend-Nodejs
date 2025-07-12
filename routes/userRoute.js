@@ -9,7 +9,8 @@ const {
   completeUserCreatedProgramDay,
   getProgramProgress,
   completeProgram,
-  getUserStats
+  getUserStats,
+  deleteUserCreatedProgram
 } = require("../controllers/UserController");
 
 router.get("/stats", authMiddleware, getUserStats);
@@ -28,5 +29,7 @@ router.patch("/complete-user-created-day", authMiddleware, completeUserCreatedPr
 router.patch("/:programId/complete", authMiddleware, completeProgram);
 
 router.get("/:programId/progress", authMiddleware, getProgramProgress);
+
+router.delete("/:programId/delete", authMiddleware, deleteUserCreatedProgram);
 
 module.exports = router;

@@ -151,7 +151,7 @@ const newStep = new Step({
     });
   } catch (err) {
     console.error("Program oluşturma hatası:", err);
-    res.status(500).json({ message: "Sunucu hatası: " + err.message });
+    res.status(500).json({ message: "Server error: " + err.message });
   }
 };
 
@@ -163,7 +163,7 @@ const createBoxingProgramByUser = async (req, res) => {
     if (!userId) {
       return res
         .status(401)
-        .json({ message: "Yetkisiz erişim. Giriş yapınız." });
+        .json({ message: "Unauthorized access. Please log in." });
     }
 
     // Form verilerini parse et
@@ -174,19 +174,19 @@ const createBoxingProgramByUser = async (req, res) => {
     if (!title || !title.trim()) {
       return res
         .status(400)
-        .json({ message: "Program başlığı zorunludur." });
+        .json({ message: "Program title is required." });
     }
 
     if (!duration || duration <= 0) {
       return res
         .status(400)
-        .json({ message: "Program süresi zorunludur ve 0'dan büyük olmalıdır." });
+        .json({ message: "Program duration is required and must be greater than 0." });
     }
 
     if (!days || !Array.isArray(days) || days.length === 0) {
       return res
         .status(400)
-        .json({ message: "Program günleri zorunludur ve en az bir gün olmalıdır." });
+        .json({ message: "Program days are required and must have at least one day." });
     }
 
     // Günlerin içeriğini kontrol et
@@ -196,7 +196,7 @@ const createBoxingProgramByUser = async (req, res) => {
       if (!day.steps || !Array.isArray(day.steps) || day.steps.length === 0) {
         return res
           .status(400)
-          .json({ message: `Gün ${day.dayNumber || i + 1} için en az bir adım zorunludur.` });
+          .json({ message: `At least one step is required for Day ${day.dayNumber || i + 1}.` });
       }
 
       // Her adımın title ve selectedMovements alanlarını kontrol et
@@ -206,13 +206,13 @@ const createBoxingProgramByUser = async (req, res) => {
         if (!step.title || !step.title.trim()) {
           return res
             .status(400)
-            .json({ message: `Gün ${day.dayNumber || i + 1}, Adım ${j + 1} için başlık zorunludur.` });
+            .json({ message: `Title is required for Day ${day.dayNumber || i + 1}, Step ${j + 1}.` });
         }
 
         if (!step.selectedMovements || !Array.isArray(step.selectedMovements) || step.selectedMovements.length === 0) {
           return res
             .status(400)
-            .json({ message: `Gün ${day.dayNumber || i + 1}, Adım ${j + 1} için en az bir hareket seçilmelidir.` });
+            .json({ message: `At least one movement must be selected for Day ${day.dayNumber || i + 1}, Step ${j + 1}.` });
         }
       }
     }
@@ -221,14 +221,14 @@ const createBoxingProgramByUser = async (req, res) => {
     if (!req.files || req.files.length === 0) {
       return res
         .status(400)
-        .json({ message: "Kapak görseli zorunludur." });
+        .json({ message: "Cover image is required." });
     }
 
     const coverFile = req.files.find((file) => file.fieldname === "cover");
     if (!coverFile) {
       return res
         .status(400)
-        .json({ message: "Kapak görseli zorunludur." });
+        .json({ message: "Cover image is required." });
     }
 
     // Medya dosyalarını yükle ve URL'lerini topla
@@ -255,7 +255,7 @@ const createBoxingProgramByUser = async (req, res) => {
 
           uploadedMedia[file.originalname] = uploadResult;
         } catch (uploadError) {
-          console.error("Medya dosyası yükleme hatası:", uploadError);
+          console.error("Media file upload error:", uploadError);
         }
       }
     }
@@ -278,10 +278,10 @@ const createBoxingProgramByUser = async (req, res) => {
       });
       coverImageUrl = uploadCover;
     } catch (uploadError) {
-      console.error("Kapak görsel yükleme hatası:", uploadError);
+      console.error("Cover image upload error:", uploadError);
       return res
         .status(500)
-        .json({ message: "Kapak görseli yüklenirken hata oluştu." });
+        .json({ message: "An error occurred while uploading the cover image." });
     }
 
     // Program oluşturma
@@ -295,7 +295,7 @@ const createBoxingProgramByUser = async (req, res) => {
     });
 
     const savedProgram = await newProgram.save();
-    console.log("Program kaydedildi, ID:", savedProgram._id);
+    console.log("Program saved, ID:", savedProgram._id);
 
     // Günler ve Adımların Kaydedilmesi
     const savedDays = [];
@@ -309,14 +309,14 @@ const createBoxingProgramByUser = async (req, res) => {
       });
 
       const savedDay = await newDay.save();
-      console.log(`Gün kaydedildi: ${savedDay.title}, ID: ${savedDay._id}`);
+      console.log(`Day saved: ${savedDay.title}, ID: ${savedDay._id}`);
 
       const savedSteps = [];
 
       // Her bir gün içindeki adımları kaydet
       if (day.steps && Array.isArray(day.steps)) {
         console.log(
-          `Gün ${day.dayNumber} için ${day.steps.length} adım işleniyor...`
+          `Processing ${day.steps.length} steps for Day ${day.dayNumber}...`
         );
         for (let i = 0; i < day.steps.length; i++) {
           const step = day.steps[i];
@@ -325,16 +325,16 @@ const createBoxingProgramByUser = async (req, res) => {
           // Eğer bu adıma ait medya dosyası varsa URL'ini al
           if (step.videoName && uploadedMedia[step.videoName]) {
             mediaUrl = uploadedMedia[step.videoName];
-            console.log(`Adım ${i + 1} için medya URL'i bulundu: ${mediaUrl}`);
+            console.log(`Media URL found for Step ${i + 1}: ${mediaUrl}`);
           } else {
             console.log(
-              `Adım ${i + 1} için medya URL'i bulunamadı. videoName: ${
+              `Media URL not found for Step ${i + 1}. videoName: ${
                 step.videoName
               }`
             );
           }
 
-          console.log(`Adım ${i + 1} verileri:`, {
+          console.log(`Step ${i + 1} data:`, {
             title: step.title,
             duration: step.duration,
             selectedMovements: step.selectedMovements,
@@ -351,13 +351,13 @@ const createBoxingProgramByUser = async (req, res) => {
 
           const savedStep = await newStep.save();
           console.log(
-            `Adım kaydedildi: ${savedStep.title}, ID: ${savedStep._id}, Seçili Hareketler: ${savedStep.selectedMovements.length}`
+            `Step saved: ${savedStep.title}, ID: ${savedStep._id}, Selected Movements: ${savedStep.selectedMovements.length}`
           );
           savedSteps.push(savedStep);
         }
       } else {
         console.log(
-          `Gün ${day.dayNumber} için adım bulunamadı veya geçersiz format.`
+          `No steps found or invalid format for Day ${day.dayNumber}.`
         );
       }
 
@@ -370,7 +370,7 @@ const createBoxingProgramByUser = async (req, res) => {
     // Programın days alanını güncelle
     savedProgram.days = savedDays.map((day) => day._id);
     await savedProgram.save();
-    console.log("Program günleri güncellendi");
+    console.log("Program days updated");
 
     // Kullanıcının createProgramByUser dizisine programı ekle
     const user = await User.findById(userId);
@@ -396,7 +396,7 @@ if (user) {
     });
 
     await user.save();
-    console.log("Program kullanıcının createProgramByUser listesine eklendi.");
+    console.log("Program added to user's createProgramByUser list.");
   }
 }
 
@@ -409,7 +409,7 @@ if (user) {
     });
   } catch (err) {
     console.error("Program oluşturma hatası:", err);
-    res.status(500).json({ message: "Sunucu hatası: " + err.message });
+    res.status(500).json({ message: "Server error: " + err.message });
   }
 };
 

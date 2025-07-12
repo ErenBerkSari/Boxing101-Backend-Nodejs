@@ -10,7 +10,7 @@ const registerBoxingProgram = async (req, res) => {
   try {
     const user = await User.findById(userId);
     if (!user)
-      return res.status(404).json({ message: "Kullanıcı bulunamadı." });
+      return res.status(404).json({ message: "User not found." });
 
     const alreadyRegistered = user.programs.some(
       (p) => p.programId?.toString() === programId
@@ -19,12 +19,12 @@ const registerBoxingProgram = async (req, res) => {
     if (alreadyRegistered) {
       return res
         .status(400)
-        .json({ message: "Bu programa zaten kayıtlısınız." });
+        .json({ message: "You are already registered for this program." });
     }
 
     const programDays = await ProgramDay.find({ programId });
     if (programDays.length === 0) {
-      return res.status(404).json({ message: "Programa ait gün bulunamadı." });
+      return res.status(404).json({ message: "No days found for this program." });
     }
 
     const daysWithProgress = programDays.map((day) => ({
@@ -41,12 +41,12 @@ const registerBoxingProgram = async (req, res) => {
     });
 
     await user.save();
-    res.status(200).json({ message: "Program kaydı tamamlandı." });
+    res.status(200).json({ message: "Program registration completed." });
   } catch (error) {
-    console.error("Kayıt hatası:", error);
+    console.error("Registration error:", error);
     res
       .status(500)
-      .json({ message: "Program kaydı sırasında bir hata oluştu." });
+      .json({ message: "An error occurred during program registration." });
   }
 };
 
@@ -57,7 +57,7 @@ const programIsRegistered = async (req, res) => {
   try {
     const user = await User.findById(userId);
     if (!user)
-      return res.status(404).json({ message: "Kullanıcı bulunamadı." });
+      return res.status(404).json({ message: "User not found." });
 
     // Hem programs hem de createProgramByUser dizilerinde arama
     const program = user.programs.find(
@@ -84,21 +84,21 @@ const completeDefaultProgramDay = async (req, res) => {
 
   try {
     const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     // Sadece admin programlarında arama
     let program = user.programs.find(
       (p) => p.programId.toString() === programId
     );
     if (!program) {
-      return res.status(404).json({ message: "Program bulunamadı" });
+      return res.status(404).json({ message: "Program not found" });
     }
 
     const day = program.days.find((d) => d.dayId.toString() === dayId);
-    if (!day) return res.status(404).json({ message: "Gün bulunamadı" });
+    if (!day) return res.status(404).json({ message: "Day not found" });
 
     if (day.isCompleted) {
-      return res.status(200).json({ message: "Bu gün zaten tamamlandı." });
+      return res.status(200).json({ message: "This day is already completed." });
     }
 
     day.isCompleted = true;
@@ -116,7 +116,7 @@ const completeDefaultProgramDay = async (req, res) => {
     await user.save();
 
     res.status(200).json({
-      message: "Gün başarıyla tamamlandı.",
+      message: "Day completed successfully.",
       completedDay: {
         dayId,
         dayNumber: day.dayNumber,
@@ -125,8 +125,8 @@ const completeDefaultProgramDay = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Gün Tamamlama Hatası (default):", err);
-    res.status(500).json({ message: "Sunucu hatası" });
+    console.error("Day Completion Error (default):", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -136,21 +136,21 @@ const completeUserCreatedProgramDay = async (req, res) => {
 
   try {
     const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     // Sadece kullanıcı tarafından oluşturulan programlarda arama
     let userCreatedProgram = user.createProgramByUser.find(
       (p) => p.programId.toString() === programId
     );
     if (!userCreatedProgram) {
-      return res.status(404).json({ message: "Program bulunamadı" });
+      return res.status(404).json({ message: "Program not found" });
     }
 
     const day = userCreatedProgram.days.find((d) => d.dayId.toString() === dayId);
-    if (!day) return res.status(404).json({ message: "Gün bulunamadı" });
+    if (!day) return res.status(404).json({ message: "Day not found" });
 
     if (day.isCompleted) {
-      return res.status(200).json({ message: "Bu gün zaten tamamlandı." });
+      return res.status(200).json({ message: "This day is already completed." });
     }
 
     day.isCompleted = true;
@@ -168,7 +168,7 @@ const completeUserCreatedProgramDay = async (req, res) => {
     await user.save();
 
     res.status(200).json({
-      message: "Gün başarıyla tamamlandı.",
+      message: "Day completed successfully.",
       completedDay: {
         dayId,
         dayNumber: day.dayNumber,
@@ -177,8 +177,8 @@ const completeUserCreatedProgramDay = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Gün Tamamlama Hatası (userCreated):", err);
-    res.status(500).json({ message: "Sunucu hatası" });
+    console.error("Day Completion Error (userCreated):", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -188,7 +188,7 @@ const getProgramProgress = async (req, res) => {
 
   try {
     const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "Kullanıcı bulunamadı." });
+    if (!user) return res.status(404).json({ message: "User not found." });
 
     // Programı önce programs dizisinde, sonra createProgramByUser dizisinde ara
     let program = user.programs.find(
@@ -200,7 +200,7 @@ const getProgramProgress = async (req, res) => {
     const targetProgram = program || userCreatedProgram;
 
     if (!targetProgram) {
-      return res.status(404).json({ message: "Kullanıcı bu programa kayıtlı değil." });
+      return res.status(404).json({ message: "User is not registered for this program." });
     }
 
     // Program detaylarını getir (toplam gün sayısı için)
@@ -246,9 +246,10 @@ const getProgramProgress = async (req, res) => {
         : null
     });
   } catch (error) {
+    console.error("Could not get progress data:", error);
     console.error("İlerleme verisi alınamadı:", error);
     return res.status(500).json({
-      message: "Program ilerlemesi alınırken bir hata oluştu.",
+      message: "An error occurred while retrieving program progress.",
       error: error.message,
     });
   }
@@ -282,7 +283,7 @@ const completeProgram = async (req, res) => {
 
     // Program zaten tamamlanmışsa hata ver
     if (targetProgram.isCompleted) {
-      return res.status(400).json({ message: "Bu program zaten tamamlanmış" });
+      return res.status(400).json({ message: "This program is already completed" });
     }
 
     // Programı tamamlandı olarak işaretle
@@ -291,13 +292,13 @@ const completeProgram = async (req, res) => {
     await user.save();
 
     res.status(200).json({
-      message: "Program başarıyla tamamlandı",
+      message: "Program completed successfully",
       programId,
       isCompleted: true,
     });
   } catch (error) {
-    console.error("Program tamamlama hatası:", error);
-    res.status(500).json({ message: "Program tamamlanırken bir hata oluştu" });
+    console.error("Program completion error:", error);
+    res.status(500).json({ message: "An error occurred while completing the program" });
   }
 };
 
@@ -307,7 +308,7 @@ const getUserStats = async (req, res) => {
   try {
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+      return res.status(404).json({ message: "User not found" });
     }
 
     // Normal programlardaki istatistikler
@@ -344,10 +345,72 @@ const getUserStats = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Kullanıcı istatistikleri alınamadı:", error);
+    console.error("Could not get user statistics:", error);
     res.status(500).json({
-      message: "Kullanıcı istatistikleri alınırken bir hata oluştu",
+      message: "An error occurred while retrieving user statistics",
       error: error.message,
+    });
+  }
+};
+
+const deleteUserCreatedProgram = async (req, res) => {
+  const userId = req.user.userId;
+  const { programId } = req.params;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Kullanıcının oluşturduğu programlarda arama
+    const userCreatedProgram = user.createProgramByUser.find(
+      (p) => p.programId.toString() === programId
+    );
+
+    if (!userCreatedProgram) {
+      return res.status(404).json({ message: "Program not found or you don't have permission to delete it" });
+    }
+
+    // Programı veritabanından sil
+    const deletedProgram = await BoxingProgram.findByIdAndDelete(programId);
+    if (!deletedProgram) {
+      return res.status(404).json({ message: "Program not found in database" });
+    }
+
+    // Program günlerini sil
+    const deletedDays = await ProgramDay.deleteMany({ programId });
+    console.log(`Deleted ${deletedDays.deletedCount} days for program ${programId}`);
+
+    // Program adımlarını sil (Step modelini import etmek gerekebilir)
+    const Step = require("../models/Step");
+    const deletedSteps = await Step.deleteMany({ 
+      dayId: { $in: deletedDays.deletedCount > 0 ? await ProgramDay.find({ programId }).distinct('_id') : [] }
+    });
+    console.log(`Deleted ${deletedSteps.deletedCount} steps for program ${programId}`);
+
+    // Kullanıcının createProgramByUser listesinden programı kaldır
+    user.createProgramByUser = user.createProgramByUser.filter(
+      (p) => p.programId.toString() !== programId
+    );
+
+    await user.save();
+
+    res.status(200).json({
+      message: "Program deleted successfully",
+      deletedProgram: {
+        id: programId,
+        title: deletedProgram.title,
+        deletedDays: deletedDays.deletedCount,
+        deletedSteps: deletedSteps.deletedCount
+      }
+    });
+
+  } catch (error) {
+    console.error("Program deletion error:", error);
+    res.status(500).json({ 
+      message: "An error occurred while deleting the program",
+      error: error.message 
     });
   }
 };
@@ -360,4 +423,5 @@ module.exports = {
   getProgramProgress,
   completeProgram,
   getUserStats,
+  deleteUserCreatedProgram,
 };

@@ -29,7 +29,7 @@ const register = async (req, res) => {
   if (!username || !password || !email) {
     return res
       .status(400)
-      .json({ message: "Lütfen tüm gerekli alanları doldurunuz." });
+      .json({ message: "Please fill in all required fields." });
   }
 
   // Email format kontrolü
@@ -37,7 +37,7 @@ const register = async (req, res) => {
   if (!emailRegex.test(email)) {
     return res
       .status(400)
-      .json({ message: "Geçerli bir email adresi giriniz." });
+      .json({ message: "Please enter a valid email address." });
   }
 
   try {
@@ -45,7 +45,7 @@ const register = async (req, res) => {
     if (existingUser) {
       return res
         .status(409)
-        .json({ message: "Bu e-posta ile zaten bir kullanıcı var." });
+        .json({ message: "A user with this email already exists." });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({ username, password: hashedPassword, email });
@@ -77,12 +77,12 @@ const register = async (req, res) => {
       email,
       username: newUser.username,
       role: newUser.role,
-      message: "Kayıt başarılı.",
+      message: "Registration successful.",
     });
   } catch (error) {
     console.error("Sunucu hatası: ", error);
     res.status(500).json({
-      message: "Bir hata oluştu. Lütfen daha sonra tekrar deneyiniz.",
+      message: "An error occurred. Please try again later.",
     });
   }
 };
@@ -92,10 +92,10 @@ const login = async (req, res) => {
   try {
     const user = await User.findOne({ email });
     if (!user)
-      return res.status(404).json({ message: "Kullanıcı bulunamadı." });
+      return res.status(404).json({ message: "User not found." });
 
     const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ message: "Yanlış şifre." });
+    if (!match) return res.status(401).json({ message: "Wrong password." });
 
     const accessToken = generateAccessToken(user);
 
@@ -134,12 +134,12 @@ const login = async (req, res) => {
       email, 
       username: user.username, 
       role: user.role,
-      message: "Giriş başarılı! Hoş geldiniz." 
+      message: "Login successful! Welcome." 
     });
   } catch (error) {
     console.error("Sunucu hatası", error);
     res.status(500).json({
-      message: "Bir hata oluştu. Lütfen daha sonra tekrar deneyiniz.",
+      message: "An error occurred. Please try again later.",
     });
   }
 };
@@ -159,17 +159,17 @@ const logout = async (req, res) => {
       secure: true,
       sameSite: "none",
     });
-    res.status(200).json({ message: "Çıkış başarılı." });
+    res.status(200).json({ message: "Logout successful." });
   } catch (error) {
     res.status(500).json({
-      message: "Bir hata oluştu. Lütfen daha sonra tekrar deneyiniz.",
+      message: "An error occurred. Please try again later.",
     });
   }
 };
 
 const refresh = async (req, res) => {
   const refreshToken = req.cookies.refreshToken;
-  if (!refreshToken) return res.json({ message: "Refresh token sağlanmadı" });
+  if (!refreshToken) return res.json({ message: "Refresh token not provided" });
 
   try {
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
@@ -189,7 +189,7 @@ const refresh = async (req, res) => {
         secure: true,
         sameSite: "none",
       });
-      return res.status(403).json({ message: "Geçersiz refresh token" });
+      return res.status(403).json({ message: "Invalid refresh token" });
     }
 
     const user = await User.findById(decoded.userId);
@@ -218,7 +218,7 @@ const refresh = async (req, res) => {
       maxAge: 10 * 60 * 1000, // 10 dakika
     });
 
-    res.json({ message: "Access token yenilendi." });
+    res.json({ message: "Access token renewed." });
   } catch (error) {
     // JWT verify hatası durumunda da cookie'leri temizle
     res.clearCookie("accessToken", {
@@ -233,7 +233,7 @@ const refresh = async (req, res) => {
     });
     return res
       .status(401)
-      .json({ message: "Yetkisiz: Geçersiz veya süresi dolmuş refresh token" });
+      .json({ message: "Unauthorized: Invalid or expired refresh token" });
   }
 };
 
@@ -241,7 +241,7 @@ const extractTokenInfo = (req, res) => {
   const token = req.cookies.accessToken;
 
   if (!token) {
-    return res.status(400).json({ message: "Token sağlanmadı" });
+    return res.status(400).json({ message: "Token not provided" });
   }
 
   try {
@@ -253,7 +253,7 @@ const extractTokenInfo = (req, res) => {
 
     res.status(200).json({ userId, role, iat, exp });
   } catch (error) {
-    return res.status(401).json({ message: "Geçersiz token" });
+    return res.status(401).json({ message: "Invalid token" });
   }
 };
 
@@ -262,7 +262,7 @@ const getAuthUser = async (req, res) => {
     if (!req.user || !req.user.userId) {
       return res.json({
         isAuthenticated: false,
-        message: "Aktif oturum bulunamadı",
+        message: "No active session found",
       });
     }
 
@@ -271,7 +271,7 @@ const getAuthUser = async (req, res) => {
     if (!user) {
       return res.json({
         isAuthenticated: false,
-        message: "Kullanıcı bulunamadı",
+        message: "User not found",
       });
     }
 
@@ -285,7 +285,7 @@ const getAuthUser = async (req, res) => {
   } catch (error) {
     console.error("❌ Kullanıcı bilgileri alınırken hata:", error.message);
     res.status(500).json({
-      message: "Bir hata oluştu. Lütfen daha sonra tekrar deneyiniz.",
+      message: "An error occurred. Please try again later.",
     });
   }
 };
