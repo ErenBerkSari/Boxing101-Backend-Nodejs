@@ -13,7 +13,7 @@ dotenv.config();
 const app = express();
 app.use(
   cors({
-    origin: "https://https://boxing101.netlify.app",
+    origin: "https://boxing101.netlify.app",
     credentials: true,
   })
 );
