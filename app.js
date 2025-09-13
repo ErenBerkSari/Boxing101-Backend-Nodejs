@@ -11,12 +11,23 @@ const userRoute = require("./routes/userRoute");
 dotenv.config();
 
 const app = express();
-app.use(
-  cors({
-    origin: "https://boxing101.vercel.app",
-    credentials: true,
-  })
-);
+const allowedOrigins = [
+  "https://boxing101.vercel.app",
+  "https://boxing101.netlify.app",
+];
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS policy does not allow this origin"));
+    }
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 
